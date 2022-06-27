@@ -1,0 +1,104 @@
+---
+title: "Campos de Produção de Petróleo da Bacia do Recõncavo"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)  
+library(sf)         
+library(tmap)      
+library(tmaptools)  
+library(RColorBrewer) 
+library(leaflet)    
+library(rgdal)      
+library(rgeos)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Mapa
+
+```{r}
+# Carrega um shapefile
+# Este shapefile contem os campos de produção da Bacia do Reconcavo 
+# e dados de produção para o ano de 2015. fonte ANP
+
+# Este shapefile contem os campos de produção de petroleo da Bahia
+
+Campos_prod <- read_sf("CAMPOS_PROD_OLEO.shp")
+
+# Convertendo o shape para um objeto utilizável no pacote SF 
+
+Campos_prod_obj <- st_as_sf(Campos_prod)
+
+# Este shapefile contem o limite da bacia do reconcavo
+
+BACIA_RECONCAVO <- read_sf("RECONCAVO.shp")
+
+# Convertendo o shape para um objeto utilizável no pacote SF 
+
+BACIA_RECONCAVO_OBJ<- st_as_sf(BACIA_RECONCAVO)
+tmap_mode("view")
+
+tm_shape(BACIA_RECONCAVO_OBJ) + 
+    tm_borders(col = "blue", lwd = 1, lty = 1) +
+    tm_layout(legend.outside = TRUE, frame = FALSE) +
+    tm_shape(Campos_prod_obj) +
+    tm_polygons( 'NOM_CAMPO' ,  size=0.05, popup.vars = c("NOM_CAMPO", "SIG_CAMPO", 'OPERADOR_C',  'Acumulado'), palette='Paired') +
+    tm_legend(legend.text.size = 0.7,legend.title.size = 1,legend.position = c("right", "top"),legend.outside = TRUE,frame = FALSE)+
+    tm_scale_bar(position = c("right", "BOTTOM")) +
+    tm_compass(type = "8star", position = c("left", "center"), show.labels = 2, text.size = 0.35)
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Gráfico 1
+
+```{r}
+# Carregue o shapefile
+
+Campos_prod_graf <- read_sf("CAMPOS_PROD_OLEO.shp")
+
+Campos_prod_graf_tabela <- as.data.frame(Campos_prod_graf)
+
+# este gráfico apresenta a produção acumulada para o ano de 2015
+ggplot(Campos_prod_graf_tabela, aes(x=SIG_CAMPO, y=Acumulado  ,   group=1)) +
+    geom_line( stat = "identity",colour = 'blue') +
+    geom_point(stat = "identity", colour = 'red')+
+    labs(x="Campos de Petróleo", y="Produção em Mm³3 em 2015", title="Produção de Petróleo Na Bacia do Recôncavo ") +
+    scale_x_discrete( "Campos", guide = guide_axis(check.overlap = TRUE, angle = 90)) +
+    theme_bw()
+
+```
+
+### Gráfico 2
+
+```{r}
+# este gráfico apresenta os campos de petrléo por Operadora
+ggplot(Campos_prod_graf_tabela, aes(x =OPERADOR_C, y=SIG_CAMPO, fill=OPERADOR_C)) + geom_bar(width = 1, stat = "identity") + 
+  coord_polar("y", start = 0, direction =1 ) + 
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.border = element_blank(),
+    panel.grid=element_blank(),
+    axis.ticks = element_blank(),
+    panel.background = element_blank(),
+    axis.text.x=element_blank(),
+    legend.title = element_blank()) + 
+  geom_text(size=3, colour="blue",data = Campos_prod_graf_tabela, aes(x =OPERADOR_C, y=SIG_CAMPO, label = SIG_CAMPO), position=position_stack(vjust=0.5),
+            hjust=0.5) +
+  labs(title = "Gráfico: Campos por empresas",
+       subtitle = "Fonte: Base de Dados ANP")
+```
+
